@@ -1,17 +1,20 @@
 /**
  *    Quench: utilities for gulp builds
+ *    v3.0.0
  */
-var gulp        = require("gulp"),
-    plumber     = require("gulp-plumber"),
-    notify      = require("gulp-notify"),
-    env         = require("gulp-environments"),
-    fs          = require("fs"),
-    path        = require("path"),
-    runSequence = require("run-sequence"),
-    color       = require("cli-color"),
-    watch       = require("gulp-watch");
+const gulp         = require("gulp");
+const plumber      = require("gulp-plumber");
+const notify       = require("gulp-notify");
+const env          = require("gulp-environments");
+const fs           = require("fs");
+const path         = require("path");
+const runSequence  = require("run-sequence");
+const color        = require("cli-color");
+const watch        = require("gulp-watch");
+const R            = require("ramda");
+const detective    = require("detective-es6");
 
-var environments = ["development", "production", "local"];
+const environments = ["development", "production", "local"];
 
 /**
  * Task files (located in ./tasks/ should be modules that export a function
@@ -19,14 +22,14 @@ var environments = ["development", "production", "local"];
  *
  * The function should register watcher via quench.registerWatcher and
  * create a gulp task with gulp.task().  The task name should be exactly the
- * same as the filename.  eg. js-common.js should define the "js-common" task
+ * same as the filename.  eg. css.js should define the "css" task
  *
  * The parameters passed to this module's function:
- * @param config: the object passed to build() in gulpfile.js.  this can
+ * @param config: The object passed to build() in gulpfile.js.  This can
  *                be used to configure the tasks.  It is also augmented with
  *                config.local from local.js
  *                See config below
- * @param env   : an instance of gulp-environments.  Basic usage:
+ * @param env   : An instance of gulp-environments.  Basic usage:
  *                eg: env.development() ? "nested" : "compressed"
  *                eg: .pipe(env.production(uglify()))
  *                see https://github.com/gunpowderlabs/gulp-environments
@@ -41,7 +44,7 @@ var environments = ["development", "production", "local"];
  *     logError
  *     singleTasks
  *     findPackageJson
- *     getInstalledNPMPackages
+ *     findAllNpmDependencies
  */
 
 /**
@@ -56,26 +59,36 @@ var environments = ["development", "production", "local"];
  *        root: path.resolve(__dirname, "../../web/Website/assets"),
  *        dest: path.resolve(__dirname, "../../web/Website/assets/build"),
  *        env: "development", // "development", "production", or "local"
- *        tasks: ["js", "css"],
- *        watch: true,
- *        browserSync: true,
- *        vmSync: false
+ *        tasks: ["js", "css"], // see NOTE below
+ *        watch: true
  *    }
  *
+ *    ** NOTE : Tasks **
+ *    tasks: can be a flat array of tasks, or an array of arrays of tasks (one level deep).
+ *
+ *    - Flat: each task will be run in parallel
+ *      eg. ["js", "css"]
+ *      js and css will start at the same time.
+ *
+ *    - Nested: each task or array of tasks will be run in sequence.
+ *      eg. [["js", "css"], "browser-sync"]
+ *      js and css will start at the same time. when both finish, browser-sync will run
+ *
+ *    - If you want to run ALL your tasks in series, wrap the first or all in an array
+ *      eg. [["js"], "css", "svg-sprite"] << will run in series
+ *      eg. ["js", "css", "svg-sprite"] << will run in parallel
+ *
  */
-var config = {};
+let config = {};
 
 // register the environments with gulp-environments
-environments.forEach(function(environment){
+environments.forEach(function(environment) {
     env[environment] = env.make(environment);
 });
 
-
 // --watch will be treated as a boolean
 // https://www.npmjs.com/package/yargs#and-if-you-really-want-to-get-all-descriptive-about-it
-var argv = require("yargs")
-    .boolean("watch")
-    .argv;
+const argv = require("yargs").boolean("watch").argv;
 
 
 /**
@@ -83,7 +96,7 @@ var argv = require("yargs")
  * @param  {String} task: the name of the task that is located in ./tasks.  Do not include the file extension (.js)
  * @return {String} The relative path to the task file
  */
-function getTaskPath(task){
+function getTaskPath(task) {
     return path.join(__dirname, "tasks", task + ".js");
 }
 
@@ -92,14 +105,14 @@ function getTaskPath(task){
  * drano: make plumber with error handler attached
  * see https://www.npmjs.com/package/gulp-plumber
  * eg: .pipe(quench.drano())
- * @return {Function}
+ * @return {Function} augmented plumber
  */
-module.exports.drano = function drano(){
+module.exports.drano = function drano() {
     return plumber({
         errorHandler: function(error) {
 
             // gulp notify is freezing jenkins builds, so we're only going to show this message if we're watching
-            if (config.watch){
+            if (config.watch) {
                 notify.onError({ title: "<%= error.plugin %>", message: "<%= error.message %>", sound: "Beep" })(error);
             }
             else {
@@ -117,16 +130,13 @@ module.exports.drano = function drano(){
  * @param  {String} watcherTask : a task name, eg: "css"
  * @param  {Array} watcherFiles : Array of globs
  * @usage quench.registerWatcher("js", [ config.root + "/js/*.js"]);
- * @return {Nothing}
+ * @return {Nothing} nothing
  */
-module.exports.registerWatcher = function registerWatch(watcherTask, watcherFiles){
+module.exports.registerWatcher = function registerWatch(watcherTask, watcherFiles) {
 
     config.watchers = config.watchers || [];
 
-    config.watchers.push({
-        task: watcherTask,
-        files: watcherFiles
-    });
+    config.watchers.push({task: watcherTask, files: watcherFiles});
 };
 
 
@@ -135,19 +145,19 @@ module.exports.registerWatcher = function registerWatch(watcherTask, watcherFile
  * @param  {Object}   _config : see "var config" above
  * @param  {Function} callback: function to call after this build is finished.
  *                              use with https://github.com/gulpjs/gulp/blob/master/docs/API.md#accept-a-callback
- * @return {Nothing}
+ * @return {Nothing} nothing
  */
-var build = module.exports.build = function build(_config, callback) {
+const build = module.exports.build = function build(_config, callback) {
 
     config = _config;
 
-    if (!config.root || !config.dest){
+    if (!config || !config.root || !config.dest || !fileExists(config.root)) {
         logError("config.root and config.dest are required!");
         console.log("config:", JSON.stringify(config, null, 2));
         process.exit();
     }
 
-    if (!config.tasks || config.tasks.length === 0){
+    if (!config.tasks || config.tasks.length === 0) {
         logError("No tasks loaded! Make sure you pass config.tasks as an array of task names to quench.build(config)!");
         console.log("config:", JSON.stringify(config, null, 2));
         process.exit();
@@ -159,14 +169,14 @@ var build = module.exports.build = function build(_config, callback) {
     }
 
     // set the environment
-    var environment = argv.env || config.env;
-    if (environment){
+    const environment = argv.env || config.env;
+    if (environment) {
 
         // make sure config.env is up to date (if argv.env was specified)
         config.env = environment;
 
         // validate the env
-        if (environments.indexOf(environment) === -1){
+        if (environments.indexOf(environment) === -1) {
             logError("Environment '" + environment + "' not found! Check your spelling or add a new environment in quench.js.");
             logError("Valid environments: " + environments.join(", "));
             process.exit();
@@ -177,78 +187,75 @@ var build = module.exports.build = function build(_config, callback) {
         // set gulp-environments
         env.current(env[environment]);
 
-        if (config.watch){
-            // gulp notify is freezing jenkins builds, so we're only going to show this message if we're watching
-            gulp.src("").pipe(notify("Building for '" + config.env + "' environment"));
-        }
-        else {
-            console.log(color.green("Building for '" + config.env + "' environment"));
-        }
-
-
+        console.log(color.green("Building for '" + config.env + "' environment"));
     }
 
     // load local.js config or initalize to empty object
-    var localJs = path.join(__dirname, "local.js");
+    const localJs = path.join(__dirname, "local.js");
     config.local = fileExists(localJs) ? require(localJs) : {};
 
-
-    //  loadTasks: given an array of tasks, require them, and pass params
-    config.tasks.forEach(function(name) {
+    // loadTask: given a task, require it, and pass params
+    const loadTask = function(name) {
         // console.log("loading task: ", name);
-        var taskFactory = require(getTaskPath(name));
+        const taskFactory = require(getTaskPath(name));
         taskFactory(config, env);
-    });
+    };
 
+    // flatten the task list and load all of them
+    R.compose(
+        R.forEach(loadTask),
+        R.flatten
+    )(config.tasks);
 
     // start watchers if specified
     if (config.watch && config.watchers) {
 
         // start the gulp watch for each registered watcher
-        config.watchers.forEach(function(watcher){
+        config.watchers.forEach(function(watcher) {
 
             logYellow("watching", watcher.task + ":", JSON.stringify(watcher.files, null, 2));
 
             // using gulp-watch instead of gulp.watch because gulp-watch will
             // recognize when new files are added/deleted.
-            watch(watcher.files, function(){
+            watch(watcher.files, function() {
                 gulp.start([watcher.task]);
             });
         });
     }
 
-    if (config.tasks && config.browserSync && config.vmSync){
-        require(getTaskPath("browser-sync"))(config, env);
-        require(getTaskPath("vm-sync"))(config, env);
-        runSequence(config.tasks, "browser-sync", "vm-sync", callback);
-    }
-    // browserSync needs special treatment because it needs to be started AFTER the
-    // build directory has been created and filled (for livereload to work)
-    else if (config.tasks && config.browserSync){
-        require(getTaskPath("browser-sync"))(config, env);
-        runSequence(config.tasks, "browser-sync", callback);
-    }
-    // or just run the tasks
-    else if (config.tasks){
-        runSequence(config.tasks, callback);
-    }
+
+    // figure out how to run the tasks
+    const tasksAreNested = R.any(Array.isArray, config.tasks);
+    const taskArg = tasksAreNested
+        // if the tasks are nested, they will run in series,
+        // add the callback to the end
+        ? config.tasks.concat(callback)
+        // if not, nest them so config.tasks runs in parallel,
+        // then the callback afterward
+        : [config.tasks, callback];
+
+    // 3, 2, 1, take off!
+    runSequence.apply(null, taskArg);
+
 };
 
 
 /**
  * logYellow: will log the output with the first arg as yellow
  * eg. logYellow("watching", "css:", files) >> [watching] css: ["some", "files"]
- * @return {Nothing}
+ * @return {Nothing} nothing
  */
-var logYellow = module.exports.logYellow = function logYellow(){
+const logYellow = module.exports.logYellow = function logYellow() {
 
-    var args = (Array.prototype.slice.call(arguments));
-    var first = args.shift();
+    const args = (Array.prototype.slice.call(arguments));
+    const first = args.shift();
 
-    if (args.length){
+    if (args.length) {
 
-        var argString = args.map(function(arg){
-            return (typeof arg  === "object") ? JSON.stringify(arg) : arg.toString();
+        const argString = args.map(function(arg) {
+            return (typeof arg === "object")
+                ? JSON.stringify(arg)
+                : arg.toString();
         }).join(" ");
 
         console.log("[" + color.yellow(first) + "]", argString);
@@ -258,20 +265,20 @@ var logYellow = module.exports.logYellow = function logYellow(){
 
 /**
  * logError: will log the output in red
- * @return {Nothing}
+ * @return {Nothing} nothing
  */
-var logError = module.exports.logError = function logError() {
+const logError = module.exports.logError = function logError() {
 
-    var args = (Array.prototype.slice.call(arguments));
+    const args = (Array.prototype.slice.call(arguments));
 
-    if (args.length){
+    if (args.length) {
 
-        var argString = args.map(function(arg){
+        const argString = args.map(function(arg) {
             // return (typeof arg  === "object") ? JSON.stringify(arg) : arg.toString();
             return arg.toString();
         }).join("");
 
-        console.log(color.red(argString));
+        console.log("[" + color.red("error") + "]", color.red(argString));
     }
 
 };
@@ -280,41 +287,43 @@ var logError = module.exports.logError = function logError() {
 /**
  * singleTasks: watch the command for single tasks, eg "gulp js"
  * @param  {Object} config: config object to be used with build
- * @return {Nothing}
+ * @return {Nothing} nothing
  * @example
  *     Running single task (task defined in /tasks.  eg. /tasks/css.js)
  *         $ gulp css                  // will use the environment from config
  *         $ gulp css --env production // will use the production environment
  *         $ gulp css --watch          // will override the watch configuration
+ *         $ gulp css js               // will run both css and js tasks
  */
-module.exports.singleTasks = function singleTasks(config){
+module.exports.singleTasks = function singleTasks(config) {
 
     // argv._ are the non-hyphenated options passed to gulp
     // eg: `gulp css js`, argv._ would be ["css", "js"]
-    if (argv._.length){
+    if (argv._.length) {
 
         // filter out tasks that don't exist
-        var tasks = argv._.filter(function(task) {
+        const tasks = argv._.filter(function(task) {
             // console.log(getTaskPath(task));
             return fileExists(getTaskPath(task));
         });
 
-        if (tasks.length){
+        if (tasks.length) {
 
-            var watch = (typeof argv.watch !== "undefined") ? { watch: argv.watch } : {};
+            const watch = (typeof argv.watch !== "undefined") ? { watch: argv.watch } : {};
 
             // load and build those tasks
-            build(Object.assign({}, config, watch, { tasks: tasks }));
+            build(Object.assign({}, config, watch, {tasks: tasks}));
         }
     }
 };
 
+
 /**
  * fileExists
- * @param  {String} filepath
+ * @param  {String} filepath : path to the file
  * @return {Boolean} true if the filepath exists and is readable
  */
-function fileExists(filepath){
+const fileExists = module.exports.fileExists = function fileExists(filepath) {
     try {
         fs.accessSync(filepath, fs.R_OK);
         return true;
@@ -322,7 +331,7 @@ function fileExists(filepath){
     catch(e) {
         return false;
     }
-}
+};
 
 
 /**
@@ -331,10 +340,10 @@ function fileExists(filepath){
  * @return {String} the filepath of package.json in this directory,
  *                  or any parent directory
  */
-var findPackageJson = module.exports.findPackageJson = function findPackageJson(dirname){
+module.exports.findPackageJson = function findPackageJson(dirname) {
 
     // use the current directory if dirname wasn't provided.
-    if (typeof(dirname) === "undefined"){
+    if (typeof(dirname) === "undefined") {
         dirname = path.resolve(__dirname);
     }
 
@@ -342,7 +351,7 @@ var findPackageJson = module.exports.findPackageJson = function findPackageJson(
     dirname = path.resolve(dirname);
 
     // create a filepath to package.json in this directory
-    var filepath = path.resolve(dirname, "package.json");
+    const filepath = path.resolve(dirname, "package.json");
 
     // check if it's there, if so, return the directory
     if (fileExists(filepath)) {
@@ -350,10 +359,10 @@ var findPackageJson = module.exports.findPackageJson = function findPackageJson(
     }
 
     // otherwise, check the parent
-    var parent = path.resolve(dirname, "..");
+    const parent = path.resolve(dirname, "..");
 
     // if we've hit the root and haven't found it, return undefined
-    if (parent === dirname){
+    if (parent === dirname) {
         return;
     }
 
@@ -363,46 +372,43 @@ var findPackageJson = module.exports.findPackageJson = function findPackageJson(
 
 
 /**
- * getInstalledNPMPackages: looks for package.json in this directory and
- *                          in parent directories
+ * findAllNpmDependencies: given an entry entryFilePath, recurse through the
+ *   imported files and find all npm modules that are imported
+ * @param  {String} entryFilePath: eg. "app/js/index/js"
  * @return {Array} an array of package names (strings).
  *                 eg ["react", "react-dom", "classnames"]
  */
-module.exports.getInstalledNPMPackages = function getInstalledNPMPackages(){
+module.exports.findAllNpmDependencies = function findAllNpmDependencies(entryFilePath){
 
-    var packageJsonPath = findPackageJson();
+    try {
+        // list of all imported modules and files from the entryFilePath
+        // eg. ["react", "../App.jsx"]
+        const imports = detective(fs.readFileSync(entryFilePath, "utf8"))
+            .map(moduleOrFilePath => {
+                // if this is a relativePath (begins with .), then resolve the path
+                // from the current entryFilePath directory name
+                return (R.test(/^(\.)/, moduleOrFilePath))
+                    ? path.resolve(path.dirname(entryFilePath), moduleOrFilePath)
+                    : moduleOrFilePath;
+            });
 
-    var packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-    var dependencies = packageJson.dependencies;
+        // list of all the modules in this entryFilePath
+        const modules = R.reject(fileExists, imports);
 
-    return Object.keys(dependencies);
+        // list of all the modules in imported files
+        const importedFilesModules = R.compose(
+            R.chain(findAllNpmDependencies), // recurse, and flatten
+            R.filter(fileExists)             // only look in files, not modules
+        )(imports);
+
+        // a set of the modules from this file + the modules from imported paths
+        const allModules = R.uniq(R.concat( modules, importedFilesModules ));
+
+        return allModules;
+
+    }
+    catch(e) {
+        logError("findAllNpmDependencies failed :( ", e);
+        return [];
+    }
 };
-
-
-/** Object.assign polyfill **/
-if (!Object.assign) {
-  Object.defineProperty(Object, "assign", {
-    enumerable: false,
-    configurable: true,
-    writable: true,
-    value: function(target) {
-        "use strict";
-        if (target == null) {
-          throw new TypeError("Cannot convert undefined or null to object");
-        }
-
-        target = Object(target);
-        for (var index = 1; index < arguments.length; index++) {
-          var source = arguments[index];
-          if (source != null) {
-            for (var key in source) {
-              if (Object.prototype.hasOwnProperty.call(source, key)) {
-                target[key] = source[key];
-              }
-            }
-          }
-        }
-        return target;
-      }
-  });
-}

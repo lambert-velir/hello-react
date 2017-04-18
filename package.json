@@ -3,7 +3,11 @@
   "author": "Mike Lambert",
   "version": "2.0.0",
   "private": true,
+  "description": "This project is based of Velir.Frontend.Starter v3.0.0",
   "devDependencies": {
+    "babel-eslint": "^7.2.2",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-plugin-transform-object-rest-spread": "^6.23.0",
     "babel-preset-es2015": "^6.14.0",
     "babel-preset-react": "^6.11.1",
     "babelify": "^7.3.0",
@@ -11,8 +15,10 @@
     "browserify": "^13.1.0",
     "cheerio": "^0.22.0",
     "cli-color": "^1.1.0",
+    "detective-es6": "^1.1.6",
     "eslint": "^3.4.0",
-    "eslint-plugin-react": "^6.2.0",
+    "eslint-plugin-class-property": "^1.0.3",
+    "eslint-plugin-react": "^6.10.3",
     "gulp": "^3.9.1",
     "gulp-autoprefixer": "^3.1.1",
     "gulp-cached": "^1.1.0",
@@ -45,7 +51,11 @@
   },
   "dependencies": {
     "classnames": "^2.2.5",
-    "react": "^15.4.1",
-    "react-dom": "^15.4.1"
+    "core-js": "^2.4.1",
+    "ramda": "^0.23.0",
+    "react": "^15.5.4",
+    "react-dom": "^15.5.4",
+    "svg4everybody": "^2.1.7",
+    "whatwg-fetch": "^2.0.3"
   }
 }

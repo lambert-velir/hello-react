@@ -1,14 +1,14 @@
 import React from "react";
 
-const { string } = React.PropTypes;
+import { string } from "prop-types";
 
-export default React.createClass({
+export default class Hello extends React.Component {
 
-    propTypes: {
+    static propTypes = {
         name: string
-    },
+    }
 
-    render(){
+    render = () => {
         const { name } = this.props;
 
         return (
@@ -17,4 +17,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

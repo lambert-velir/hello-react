@@ -1,11 +1,11 @@
-var gulp   = require("gulp"),
-    quench = require("../quench.js"),
-    debug  = require("gulp-debug");
+const gulp   = require("gulp");
+const quench = require("../quench.js");
+const debug  = require("gulp-debug");
 
-module.exports = function copyTask(config, env){
+module.exports = function copyTask(config, env) {
 
     // copy files settings
-    var copy = {
+    const copy = {
         src: [
             config.root + "/index.html"
         ],
@@ -19,7 +19,7 @@ module.exports = function copyTask(config, env){
     /* copy files */
     gulp.task("copy", function(next) {
 
-        return gulp.src(copy.src)
+        return gulp.src(copy.src, { base: config.root })
             .pipe(quench.drano())
             .pipe(gulp.dest(copy.dest))
             .pipe(debug({title: "copy:"}));

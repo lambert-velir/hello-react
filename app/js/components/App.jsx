@@ -1,16 +1,13 @@
 import React from "react";
 import Hello from "./Hello/Hello.jsx";
 
-export default React.createClass({
+export default class App extends React.Component {
 
-    getInitialState() {
-        return {
+    state = {
 
-        };
-    },
+    };
 
-
-    render() {
+    render = () => {
 
         return (
             <div>
@@ -19,4 +16,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}
