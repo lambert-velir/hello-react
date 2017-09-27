@@ -53,8 +53,8 @@
     "classnames": "^2.2.5",
     "core-js": "^2.4.1",
     "ramda": "^0.23.0",
-    "react": "^15.5.4",
-    "react-dom": "^15.5.4",
+    "react": "^16.0.0",
+    "react-dom": "^16.0.0",
     "svg4everybody": "^2.1.7",
     "whatwg-fetch": "^2.0.3"
   }
