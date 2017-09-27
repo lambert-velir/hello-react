@@ -15,7 +15,7 @@ const defaultTasks = ["js", "css", "copy", "svg-sprite"];
 // default configuration
 // For details, see "user supplied keys" in quench.js
 const defaults = {
-    root: path.resolve(__dirname, "../app"),
+    root: path.resolve(__dirname, "../client"),
     dest: path.resolve(__dirname, "../build"),
     tasks: defaultTasks,
     env: "development", // "development", "production", "local"
