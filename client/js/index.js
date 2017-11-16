@@ -7,6 +7,6 @@ const mountNode = document.querySelector(".js-mount");
 
 
 ReactDOM.render(
-    <App />,
-    mountNode
+  <App />,
+  mountNode
 );

@@ -11,7 +11,5 @@ module.exports = {
     // port that browsersync will run on
     // http://www.browsersync.io/docs/options/#option-port
     // "browserSyncPort": 3000
-
-    // destination path for gulp (could be local files or VM path)
-    // "vmRoot": "//192.168.33.10/wwwroot/ProjectName/Website"
+    
 };

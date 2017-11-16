@@ -3,21 +3,21 @@ import React from "react";
 import { string } from "prop-types";
 
 const propTypes = {
-    name: string
+  name: string
 };
 
 const defaultProps = {
-    name: "mike"
+  name: "mike"
 };
 
 const Hello = (props) => {
-    const { name } = props;
+  const { name } = props;
 
-    return (
-        <div className="hello">
-            Hello, <span className="hello__name">{name}!</span>
-        </div>
-    );
+  return (
+    <div className="hello">
+      Hello, <span className="hello__name">{name}!</span>
+    </div>
+  );
 };
 
 Hello.propTypes = propTypes;

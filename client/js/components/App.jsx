@@ -3,17 +3,17 @@ import Hello from "./Hello/Hello.jsx";
 
 export default class App extends React.Component {
 
-    state = {
+  state = {
 
-    };
+  };
 
-    render = () => {
+  render = () => {
 
-        return (
-            <div>
-                <Hello name={"React"} />
-                <Hello name={"Velir"} />
-            </div>
-        );
-    }
+    return (
+      <div>
+        <Hello name={"React"} />
+        <Hello name={"Velir"} />
+      </div>
+    );
+  }
 }
