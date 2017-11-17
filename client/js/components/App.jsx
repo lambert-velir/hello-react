@@ -1,19 +1,14 @@
 import React from "react";
 import Hello from "./Hello/Hello.jsx";
+import Counter from "./Counter/Counter.jsx";
 
-export default class App extends React.Component {
 
-  state = {
-
-  };
-
-  render = () => {
-
-    return (
-      <div>
-        <Hello name={"React"} />
-        <Hello name={"Velir"} />
-      </div>
-    );
-  }
+export default function App(props){
+  return (
+    <div>
+      <Hello name="React" />
+      <Counter />
+      <Hello name="Velir" />
+    </div>
+  );
 }

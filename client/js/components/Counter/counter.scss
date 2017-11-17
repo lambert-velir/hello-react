@@ -1,0 +1,30 @@
+@import "../../../scss/_colors.scss";
+
+.counter {
+  padding: 12px;
+  text-align: center;
+}
+
+.counter__text {
+  font-size: 24px;
+  margin-top: 12px;
+}
+
+.counter__button button {
+  padding: 4px 24px;
+
+  font-size: 24px;
+
+  border: 2px solid #ababab;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:active {
+    transform: translate(1px, 1px);
+  }
+}
+
+.counter__number {
+  color: $blue-00d8ff;
+  text-shadow: 1px 1px 1px #333;
+}
