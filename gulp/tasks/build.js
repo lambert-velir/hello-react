@@ -65,7 +65,11 @@ module.exports = function buildTask(projectRoot) {
     });
 
 
-    const buildTasks = ["build-js", "build-css", "build-copy"];
+    const buildTasks = [
+      "build-js",
+      "build-css",
+      "build-copy"
+    ];
 
     if (quench.isWatching()){
       return runSequence(buildTasks, "build-browser-sync");
