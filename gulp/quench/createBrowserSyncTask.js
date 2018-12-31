@@ -4,7 +4,7 @@ const R           = require("ramda");
 const browserSync = require("browser-sync").create();
 
 
-module.exports = function(taskName, userConfig){
+module.exports = function(taskName, userConfig = {}){
 
   const localConfig = quench.loadLocalJs();
 
@@ -35,7 +35,7 @@ module.exports = function(taskName, userConfig){
     // set the server root, or proxy if it's set in local.js
     // use proxy if you have a server running the site already (eg, IIS)
     // http://www.browsersync.io/docs/options/#option-proxy
-    proxy: userConfig.proxy || localConfig.hostname || undefined
+    proxy: localConfig.hostname || userConfig.proxy || undefined
 
     // if not using proxy, use userConfig.server as the server root
     // http://www.browsersync.io/docs/options/#option-server

@@ -1,16 +1,18 @@
-const gulp   = require("gulp");
-const quench = require("./quench.js");
-const debug  = require("gulp-debug");
-const R      = require("ramda");
+const gulp    = require("gulp");
+const quench  = require("./quench.js");
+const debug   = require("gulp-debug");
+const changed = require("gulp-changed");
+const R       = require("ramda");
 
 module.exports = function copyTask(taskName, userConfig) {
 
   const copyConfig = R.merge({
     /**
-     * src       : glob of files to copy
-     * dest      : destination folder
-     * base      : *optional https://github.com/gulpjs/gulp/blob/master/docs/API.md#optionsbase
-     * watch     : files to watch that will trigger a rerun when changed
+     * src   : glob of files to copy
+     * dest  : destination folder
+     * base  : *optional, https://github.com/gulpjs/gulp/blob/master/docs/API.md#optionsbase
+     * watch : *optional, files to watch that will trigger a rerun when changed
+     *          defaults to src
      */
   }, userConfig);
 
@@ -24,10 +26,10 @@ module.exports = function copyTask(taskName, userConfig) {
   }
 
 
-  // copy files
   gulp.task(taskName, function(next) {
     return gulp.src(src, { base: base })
       .pipe(quench.drano())
+      .pipe(changed(dest))
       .pipe(gulp.dest(dest))
       .pipe(debug({ title: `${taskName}:` }));
   });

@@ -30,6 +30,9 @@ module.exports = function jsTask(taskName, userConfig){
       debug: !env.production() // enable sourcemaps for development/local
     },
 
+    // array or string of globs of files to watch to rerun the entire task
+    watch: [],
+
     /**
      * Add new entry javascript files to the files array
      * keys:
@@ -115,7 +118,7 @@ module.exports = function jsTask(taskName, userConfig){
       require: npmPackages
     }));
 
-    quench.logYellow("npm packages", npmPackages);
+    quench.logYellow("npm packages", JSON.stringify(npmPackages, null, 2));
 
     return b.bundle()
       .on("error", function(e){
@@ -140,7 +143,10 @@ module.exports = function jsTask(taskName, userConfig){
   /* 3. Create entry "js" function to run them all */
 
   // if package.json changes, re-run all js tasks
-  quench.maybeWatch(taskName, [ findup.sync("package.json") ]);
+  quench.maybeWatch(taskName, R.unnest([
+    jsConfig.watch,
+    findup.sync("package.json")
+  ]));
 
   // a list of all the dynamic tasks we made above + js-libraries
   const allTasks = R.compose(
@@ -210,7 +216,7 @@ function bundleJs(browserifyOptions, npmPackages){
     const b = browserify(browserifyOptions || {}) // pass options
       .add(file.path) // this file
       .transform(babelify, { // run it through babel, for es6 transpiling
-        presets: [ "es2015", "react" ],
+        presets: [ "env", "react" ],
         plugins: [ "transform-object-rest-spread", "transform-class-properties" ]
       });
 
